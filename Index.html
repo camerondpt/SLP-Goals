@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLP Goal Library & Review Tool</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            line-height: 1.8;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 25px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        header h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        .selector-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            flex: 1;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            background-color: #fff;
+        }
+        .preview-box {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        .preview-box h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        #interactive-sentence {
+            font-size: 1.2em;
+            color: #2d3436;
+        }
+        .placeholder {
+            background-color: #e0f7fa;
+            color: #007bff;
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            border-bottom: 2px dotted #007bff;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .placeholder:hover {
+            background-color: #cceeff;
+        }
+        .custom-selector {
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            border-radius: 5px;
+            padding: 10px;
+            z-index: 1000;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .custom-selector div {
+            padding: 5px;
+            white-space: nowrap;
+        }
+        .custom-selector label {
+            font-weight: normal;
+            margin-left: 5px;
+            display: inline-block;
+        }
+        .inline-input {
+            padding: 2px 5px;
+            font-size: 1em;
+            border: 1px solid #007bff;
+            border-radius: 3px;
+            font-family: "Courier New", Courier, monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>SLP Goal Library & Review Tool</h1>
+        </header>
+
+        <div class="selector-container">
+            <div class="control-group">
+                <label for="category-selector">1. Select a Goal Category:</label>
+                <select id="category-selector"></select>
+            </div>
+            <div class="control-group">
+                <label for="goal-name-selector">2. Select a Goal Name:</label>
+                <select id="goal-name-selector"></select>
+            </div>
+        </div>
+
+        <div class="preview-box">
+            <h3>Interactive Goal Sentence</h3>
+            <p id="interactive-sentence">Select a category to begin...</p>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA SETUP: SMARTLISTS (Final Verified Version) ---
+        const smartLists = {
+            SLCogStrategy: { multi: true, options: ['Goal-Plan-Do-Review (GPDR)', 'Pomodoro Technique', 'Prioritization Matrix (e.g., Eisenhower, Must/Should/Could)', 'A visual planning system', 'An external memory aid', 'Proactive rest breaks', 'Use of a planner / calendar', 'Mindfulness/grounding techniques', 'Setting phone alarms / reminders', 'Taking notes / Using a notebook', 'Using a pill organizer', 'Environmental placement (e.g., keys by the door)', 'Backwards chaining', 'Task chunking', '***'] },
+            SLComplexityCog: { multi: false, options: ['simple', 'moderately complex', 'complex'] },
+            SLProblemContext: { multi: true, options: ['home safety', 'home management', 'work/vocational demands', 'community integration', 'social situation', 'completing a functional problem-solving task'] },
+            SLPacingStrategy: { multi: true, options: ['planning and pacing strategies', 'scheduled rest breaks', 'energy conservation techniques', 'task delegation'] },
+            SLBrainHealthHabit: { multi: true, options: ['optimized nutrition/hydration habit', 'physical exercise routine', 'restorative sleep practice', 'mindfulness/calming technique', 'social connection activity'] },
+            SLSupportLevel: { multi: true, options: ['independently', 'with modified independence', 'with minimal cues', 'with moderate cues', 'with maximal cues', 'with minimal to moderate cues', 'with moderate to maximal cues', 'with visual cues', '***'] },
+            SLAccuracy: { multi: true, options: ['with 100% accuracy', 'with 90% accuracy', 'with 80% accuracy', 'in 9 out of 10 opportunities', 'in 8 out of 10 opportunities', 'in 4 out of 5 opportunities', 'across 3 consecutive sessions', 'as measured by patient log/report', '***'] },
+            SLDietTexture: { multi: true, options: ['Level 0 Thin liquids', 'Level 1 Slightly Thick liquids', 'Level 2 Mildly Thick liquids', 'Level 3 Moderately Thick liquids', 'Level 4 Pureed / Extremely Thick', 'Level 5 Minced & Moist', 'Level 6 Soft & Bite-Sized', 'Level 7 Regular / Easy to Chew', '***'] },
+            SLSwallowAssessment: { multi: true, options: ['Modified Barium Swallow Study (MBSS)', 'Fiberoptic Endoscopic Evaluation of Swallowing (FEES)', '***'] },
+            SLSwallowStrategy: { multi: true, options: ['chin tuck posture', 'head turn posture', 'effortful swallow', 'supraglottic swallow', 'super-supraglottic swallow', 'Mendelsohn maneuver', 'pacing strategies', 'small bites/sips'] },
+            SLExerciseTarget: { multi: true, options: ['oral motor control (labial/lingual/buccal)', 'pharyngeal strengthening', 'respiratory muscle strength (e.g., EMST)', 'hyolaryngeal excursion', 'base of tongue retraction'] },
+            SLExercisePurpose: { multi: true, options: ['improve bolus formation and transit', 'reduce oral/pharyngeal residue', 'improve airway protection', 'improve pharyngeal clearance', 'increase upper esophageal sphincter (UES) opening', 'improve labial seal and reduce anterior loss', 'improve sensory awareness for bolus manipulation', 'facilitate improved pharyngeal contraction'] },
+            SLNmesPlacement: { multi: true, options: ['pharyngeal musculature', 'facial musculature', 'suprahyoidal musculature', '***'] },
+            SLNmesPurpose: { multi: true, options: ['facilitate improved hyolaryngeal excursion', 'improve labial seal and reduce anterior loss', 'improve sensory awareness for bolus manipulation', 'facilitate improved pharyngeal contraction'] },
+            SLSwallowExercise: { multi: true, options: ['Effortful swallows', 'Mendelsohn maneuvers', 'Shaker / Head-lift exercises', 'Masako / Tongue-hold maneuvers'] },
+            SLOutcomeMeasure: { multi: true, options: ['Cough Severity Index', 'Dyspnea Index', 'Eating Assessment Tool (EAT-10)', 'Frenchay Dysarthria Assessment', 'Functional Oral Intake Scale (FOIS)', 'MD Anderson Dysphagia Inventory (MDADI)', 'MOCA', 'PILL-5', 'PSFS', 'Reflux Severity Index (RSI)', 'SLUMS', 'Swallowing Quality of Life Questionnaire (SWAL-QOL)', 'VHI-10', 'Voice Handicap Index (Full)', 'Gender-Affirming Voice Index (GVI)', '***'] },
+            SLOutcomeImprovement: { multi: true, options: ['a ***% improvement on the .SLOutcomeMeasure compared to baseline', 'an improvement from *** to *** on the .SLOutcomeMeasure', 'successful communication of wants/needs with .SLAccuracy', 'a score change of *** from *** to ***'] },
+            SLAttentionType: { multi: true, options: ['Sustained Attention', 'Selective Attention', 'Alternating Attention', 'Divided Attention'] },
+            SLEnvironment: { multi: true, options: ['quiet environment', 'functionally noisy environment (e.g., simulated cafe)', 'with minimal auditory/visual distractions', 'with moderate auditory/visual distractions', '***'] },
+            SLAttentionStrategy: { multi: true, options: ['Environmental modification (e.g., reducing clutter)', 'Time management techniques (e.g., Pomodoro, time-blocking)', 'Self-verbalization / "thinking aloud"', 'Use of external aids (e.g., timers, alarms, checklists)'] },
+            SLMemoryStrategyType: { multi: true, options: ['Internal Strategies', 'External Strategies', 'Compensatory Strategies', 'Metacognitive strategies'] },
+            SLMemoryStrategyExample: { multi: true, options: ['Repetition / Rehearsal', 'Visualization / Association', 'Spaced Retrieval', 'Creating stories / Chaining', 'Taking notes / Using a notebook', 'Use of a planner / calendar', 'Setting phone alarms / reminders', 'Using a pill organizer', 'Environmental placement (e.g., keys by the door)'] },
+            SLMemoryTaskType: { multi: true, options: ['recalling appointments and to-dos (Prospective Memory)', 'recalling novel information / new learning', 'recalling conversational details', 'recalling multi-step directions', 'recalling information from written text', 'completing a functional problem-solving task'] },
+            SLCogTherapyType: { multi: true, options: ['Reminiscence Therapy', 'Cognitive Stimulation Therapy', '***'] },
+            SLCogTherapyAction: { multi: true, options: ['generating memories from a prompt', 'identifying relevant pictures/objects', 'contributing to a life story book'] },
+            SLCogTherapyOutcome: { multi: true, options: ['improve conversational discourse', 'facilitate social engagement', 'promote general well-being'] },
+            SLAnomiaStrategy: { multi: true, options: ['circumlocution', 'semantic feature analysis (SFA)', 'gesturing', 'writing the word', 'using an AAC device', 'phonemic self-cuing', 'describing the function/category'] },
+            SLCommunicationContext: { multi: true, options: ['structured naming tasks', 'sentence completion', 'conversational speech', 'a timed conversational task', 'a presentation', 'a structured role-play scenario', 'community-based interactions'] },
+            SLAnomiaDrillTask: { multi: true, options: ['graded confrontation naming exercises', 'responsive naming', 'categorical naming (e.g., "name 3 animals")', 'rhyming word generation'] },
+            SLDiscourseStrategy: { multi: true, options: ['using a graphic organizer', 'outlining main ideas', 'verbal rehearsal', 'self-monitoring for topic maintenance'] },
+            SLDiscourseTask: { multi: true, options: ['conversational speech', 'narrative storytelling', 'explaining a procedure', 'giving a presentation', 'writing an email'] },
+            SLDiscourseOutcome: { multi: true, options: ['reduce false starts and revisions', 'reduce off-topic remarks', 'ensure clear communication for the listener', 'require no more than *** listener clarifications'] },
+            SLDiscourseTarget: { multi: true, options: ['word retrieval', 'discourse coherence', 'informativeness', 'fluency', 'thought organization'] },
+            SLDirectionComplexity: { multi: true, options: ['1-step', '2-step', '3-step', '***-step sequential', 'multi-step sequential', 'commands involving body parts'] },
+            SLModality: { multi: true, options: ['an auditory', 'a written'] },
+            SLQuestionType: { multi: true, options: ['simple yes/no questions', 'biographical yes/no questions', 'simple wh- questions (who/what/where)', 'complex questions', 'an item\'s function/description'] },
+            SLResponseType: { multi: true, options: ['verbally answering', 'pointing to the correct item/picture from a field of ***', 'selecting the correct written answer'] },
+            SLExpressionDrillTask: { multi: true, options: ['automatic speech sequences (e.g., days of the week)', 'sentence cloze phrases', 'confrontation naming of common objects/body parts'] },
+            SLUtteranceType: { multi: true, options: ['modified noun phrase (e.g., size/color + object)', '3-4 word utterance', 'simple sentence (agent + verb)', 'grammatically complete sentence (S-V-O)'] },
+            SLTaskContext: { multi: true, options: ['a picture description task', 'a structured sentence generation task (e.g., VNeST)', 'a response to a question'] },
+            SLReadingWritingVerb: { multi: true, options: ['read and comprehend', 'write'] },
+            SLReadingWritingTask: { multi: true, options: ['single words', 'functional/biographical information', 'simple sentences', 'complex sentences'] },
+            SLEmoRegStrategy: { multi: true, options: ['deep breathing', 'positive self-talk', 'pausing/taking a break', 'recognizing personal triggers'] },
+            SLEmoRegPurpose: { multi: true, options: ['manage frustration', 'reduce anxiety', 'manage cognitive fatigue', 'modulate emotional responses', 'engage in social communication'] },
+            SLMeasurementMethod: { multi: true, options: ['clinical observation', 'self-report', 'family report', 'a tracking log'] },
+            SLTherapeuticProtocol: { multi: true, options: ['VNeST (Verb Network Strengthening Treatment)', 'SFA (Semantic Feature Analysis)', 'ORLA (Oral Reading for Language in Aphasia)', 'a structured home exercise program'] },
+            SLProtocolPurpose: { multi: true, options: ['lexical retrieval', 'reading comprehension', 'auditory comprehension', 'verbal expression', 'written expression'] },
+            SLWritingActionFoundational: { multi: true, options: ['copy', 'trace', 'write from dictation'] },
+            SLWritingContentFoundational: { multi: true, options: ['single letters', 'numbers', 'personally relevant single words (e.g., name, family)', 'functional high-frequency words'] },
+            SLWritingContentGenerative: { multi: true, options: ['single words related to basic wants/needs', 'short functional phrases', 'simple SVO sentences', 'simple sentences with 1+ expansion', 'complex sentences', 'a multi-paragraph essay', 'information to complete a form'] },
+            SLWritingAid: { multi: true, options: ['an alphabet board', 'a word bank', 'a graphic organizer', 'visual supports', 'no aids'] },
+            SLWritingProtocol: { multi: true, options: ['Copy and Recall Treatment (CART)', 'Anagram and Copy Recall Treatment (ACART)'] },
+            SLMotorSpeechProtocol: { multi: true, options: ['Sound Production Treatment (SPT)', 'Motor Learning Guided (MLG) treatment', 'Melodic Intonation Therapy (MIT)', 'articulatory-kinematic treatment'] },
+            SLStrategyType: { multi: true, options: ['word finding strategies', 'thought organization strategies', 'compensatory strategies', 'memory strategies', 'reading comprehension strategies'] },
+            SLReadingStimulus: { multi: true, options: ['personally relevant sight words', 'functional single words', 'functional written phrases', 'simple sentences'] },
+            SLComprehensionResponse: { multi: true, options: ['matching to a corresponding picture', 'matching to a corresponding function', 'pairing with the correct picture from a field of ***'] },
+            SLReadingTextType: { multi: true, options: ['simple sentences or paragraphs', 'short paragraphs from real-world materials (e.g., news, emails)', 'functional texts (e.g., schedules, ads, medication instructions)', 'a short story or article'] },
+            SLReadingCognitiveTask: { multi: true, options: ['answering comprehension questions', 'identifying the main idea and supporting details', 'sequencing written steps', 'following written directions', 'completing a reading-based problem-solving task'] },
+            SLTargetSound: { multi: true, options: ['/s/', '/l/', '/r/', 'velars (k,g)', 'bilabials (p,b,m)', 'voiced/voiceless minimal pairs', '***'] },
+            SLSoundPosition: { multi: true, options: ['the initial position', 'the medial position', 'the final position', 'all positions'] },
+            SLComplexityLevel: { multi: true, options: ['isolation', 'single words', 'phrases', 'sentences', 'conversational speech'] },
+            SLComplexityPhrase: { multi: true, options: ['in isolation', 'at the single word level', 'at the phrase level', 'at the sentence level', 'during conversational speech'] },
+            SLSpeechSystemTarget: { multi: true, options: ['respiratory support for speech', 'rate of speech', 'prosody (pitch, loudness, stress, intonation)', 'a compensatory strategy (e.g., "SOS")', 'oral motor exercises'] },
+            SLSyllableShape: { multi: true, options: ['CV', 'VC', 'CVC', 'CVCV', 'multisyllabic'] },
+            SLFluencyTask: { multi: true, options: ['a structured reading task', 'a monologue/presentation', 'a simple conversation', 'a complex mock language task (e.g., ordering a meal)'] },
+            SLFluencyStrategy: { multi: true, options: ['awareness/self-monitoring', 'fluency shaping strategies (e.g., easy onset)', 'rate control', 'stuttering modification strategies', 'tension reduction techniques'] },
+            SLVoiceEdTopic: { multi: true, options: ['anatomy and physiology of voice/breathing', 'vocal hygiene principles', 'GERD/reflux precautions', 'VCD triggers and antecedents', 'rationale for vocal exercises', 'rationale for resonant voice therapy', 'proper use of a respiratory retrainer device'] },
+            SLVoiceExerciseType: { multi: true, options: ['diaphragmatic breathing', 'laryngeal massage and stretches', 'pursed-lip exhalation', 'relaxed-throat breathing for VCD', 'respiratory muscle training (RMT)', 'resonant voice therapy exercises', 'semi-occluded vocal tract (SOVT) exercises', 'systematic relaxation exercises', 'Vocal Function Exercises (VFE)', 'Vocal Warm-ups'] },
+            SLVoiceTechnique: { multi: true, options: ['diaphragmatic breathing support', 'easy onset phonation', 'flow phonation', 'rescue/recovery breathing', 'resonant voice'] },
+            SLFunctionalContext: { multi: true, options: ['a ***-minute conversation', 'a physically strenuous activity (***)', 'a monologue/presentation', 'reading a paragraph', 'a structured monologue/presentation', 'a structured role-play task'] },
+            SLCoughDyspneaStrategy: { multi: true, options: ['cough suppression techniques (e.g., sip of water, hard swallow)', 'planned recovery breathing', 'throat-opening strategies', 'VCD rescue strategies'] },
+            SLVoiceOutcomeMeasure: { multi: true, options: ['average conversational loudness (dB SPL)', 'CAPE-V ratings', 'the Cough Severity Index (CSI)', 'the Dyspnea Index', 'Gender-Affirming Voice Index (GVI)', 'maximum phonation time (MPT)', 'patient-reported pain level (/10 scale)', 's/z ratio', 'spectrogram analysis', 'the Vocal Cord Dysfunction Questionnaire (VCDQ)', 'the Voice Handicap Index (VHI-10)'] },
+            SLSpeakingTask: { multi: true, options: ['reading at the word/sentence level', 'simple structured conversation', 'sustained phonation', 'unstructured conversation'] },
+            SLVoiceCharacteristic: { multi: true, options: ['prosodic features (rate, inflection)', 'resonance focus', 'articulation patterns'] },
+            SLRatingScale: { multi: true, options: ['visual analog scale', '7-point Likert scale'] },
+            SLTaskComplexity: { multi: true, options: ['simple', 'moderately complex', 'complex']},
+            SLAACDeviceTask: { multi: true, options: ['power functions (on/off)', 'charging procedures', 'cleaning the device', 'basic troubleshooting', 'message programming', 'voice banking', '***'] },
+            SLAACConversationSkill: { multi: true, options: ['initiating a conversation', 'maintaining a topic', 'asking partner-focused questions', 'making topic-related comments', 'using repair strategies', 'ending a conversation appropriately', '***'] },
+            SLAACMessageType: { multi: true, options: ['novel sentences', 'pre-planned messages', 'emails', 'messages to repair a breakdown', '***'] },
+            SLAACMessagePurpose: { multi: true, options: ['expressing medical needs/symptoms', 'ensuring safety', 'social engagement', 'vocational tasks', '***'] },
+        };
+        
+        // --- DATA SETUP: GOAL TEMPLATES (Final Verified Version) ---
+        const finalGoalData = {
+            "Communication - Attention": [
+                { name: "Assessment and Planning", parts: ["Patient will complete further diagnostic assessment of cognitive-linguistic functions, including attention, to identify specific deficits and guide the development of a targeted treatment plan."] },
+                { name: "Direct Skill Training", parts: ["Patient will demonstrate improved ", { list: "SLAttentionType" }, " by completing a ", { list: "SLTaskComplexity" }, " task within a ", { list: "SLEnvironment" }, { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Direct Skill Training Add'l", parts: ["Patient will demonstrate improved ", { list: "SLAttentionType" }, " by completing a ", { list: "SLTaskComplexity" }, " task within a ", { list: "SLEnvironment" }, " environment, ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Compensatory Strategy Use", parts: ["Patient will demonstrate consistent use of ", { type: 'text', placeholder: 'e.g., at least 2' }, " ", { list: "SLAttentionStrategy" }, " to improve focus and task management during ", { type: 'text', placeholder: 'a functional task' }, "."] },
+                { name: "Functional Performance", parts: ["Patient will demonstrate sustained conversational attention by ", { type: 'text', placeholder: 'e.g., asking relevant questions' }, " for ", { type: 'text', placeholder: 'e.g., 5 minutes' }, " during a conversational exchange, ", { list: "SLSupportLevel" }, "."] }
+            ],
+            "Communication - Cognition": [
+                { name: "Attention", parts: ["Patient will demonstrate ", { list: "SLAttentionType" }, " in a ", { list: "SLEnvironment" }, " by utilizing ", { list: "SLAttentionStrategy" }, " for a duration of ", { type: 'text', placeholder: 'e.g., 10 minutes' }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Memory", parts: ["Patient will utilize ", { list: "SLMemoryStrategyType" }, ", such as ", { list: "SLMemoryStrategyExample" }, ", for ", { list: "SLMemoryTaskType" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Therepeutic Participation", parts: ["Patient will participate in ", { list: "SLCogTherapyType" }, " by ", { list: "SLCogTherapyAction" }, " to ", { list: "SLCogTherapyOutcome" }, ", as measured by ", { type: 'text', placeholder: 'e.g., patient report' }, "."] }
+            ],
+            "Communication - Executive Function": [
+                { name: "Task Completion and Strategy Use", parts: ["Patient will demonstrate use of ", { list: "SLCogStrategy" }, " to successfully complete a ", { list: "SLComplexityCog" }, ", ", { type: 'text', placeholder: 'e.g., multi-step functional task' }, ", ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Problem Solving", parts: ["Patient will generate and state a safe and appropriate solution to a ", { list: "SLComplexityCog" }, " problem related to ", { list: "SLProblemContext" }, ", ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Sequencing", parts: ["Patient will accurately sequence a ", { type: 'text', placeholder: 'e.g., 4-step' }, " functional task related to ", { type: 'text', placeholder: 'e.g., making coffee' }, ", ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Cognitive Endurance / Energy Management - Understanding", parts: ["Patient will demonstrate understanding of cognitive fatigue by accurately identifying ", { type: 'text', placeholder: 'e.g., 3 personal symptoms' }, " and verbalizing ", { type: 'text', placeholder: 'e.g., 2 management strategies' }, " for proactive energy management."] },
+                { name: "Cognitive Endurance / Energy Management - Implementation", parts: ["Patient will implement ", { list: "SLPacingStrategy" }, " to manage cognitive fatigue, resulting in ", { type: 'text', placeholder: 'e.g., completion of a desired activity' }, " across a ", { type: 'text', placeholder: 'e.g., one-week' }, " period."] },
+                { name: "Cognitive Endurance / Energy Management - Habit Formation", parts: ["Patient will adopt ", { type: 'text', placeholder: 'e.g., 2' }, " new habit(s), ", { list: "SLBrainHealthHabit" }, ", into their weekly routine to support cognitive function and overall well-being, as measured by patient report/log."] },
+                { name: "Patient Education", parts: ["Patient and/or caregiver will demonstrate understanding of ", { type: 'text', placeholder: 'e.g., cognitive strategies' }, " by verbalizing ", { type: 'text', placeholder: 'e.g., 3' }, " key concepts and identifying ", { type: 'text', placeholder: 'e.g., 2' }, " methods for implementation in the patient's daily routine."] }
+            ],
+            "Communication - Memory": [
+                { name: "Strategy Application", parts: ["Patient will demonstrate use of ", { type: 'text', placeholder: 'e.g., at least 2' }, " ", { list: "SLMemoryStrategyType" }, " (e.g., ", { list: "SLMemoryStrategyExample" }, ") to successfully complete a ", { list: "SLMemoryTaskType" }, ", ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Strategy Application Add'l", parts: ["Patient will demonstrate use of ", { type: 'text', placeholder: 'e.g., at least 2' }, " ", { list: "SLMemoryStrategyType" }, " (e.g., ", { list: "SLMemoryStrategyExample" }, ") to successfully complete a ", { list: "SLMemoryTaskType" }, ", ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Recall Performance", parts: ["Patient will recall ", { type: 'text', placeholder: 'e.g., 3 key details' }, " after a ", { type: 'text', placeholder: 'e.g., 5-minute' }, " delay, ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Recall Performance Add'l", parts: ["Patient will recall ", { type: 'text', placeholder: 'e.g., 3 key details' }, " after a ", { type: 'text', placeholder: 'e.g., 5-minute' }, " delay, ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Working Memory", parts: ["Patient will demonstrate improved working memory by holding and mentally manipulating ", { type: 'text', placeholder: 'e.g., a sequence of 5 numbers' }, " to complete a ", { list: "SLTaskComplexity" }, " task, ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] }
+            ],
+            "Communication - Social Interaction": [
+                { name: "Anomia - Strategy Use", parts: ["Patient will use ", { list: "SLAnomiaStrategy" }, " to repair/compensate for word-finding deficits during ", { list: "SLCommunicationContext" }, ", ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Anomia - Exercise Accuracy", parts: ["Patient will complete ", { list: "SLAnomiaDrillTask" }, ", ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Discourse and Thought Organization", parts: ["Patient will utilize ", { list: "SLDiscourseStrategy" }, " to improve thought organization for ", { list: "SLDiscourseTask" }, " in order to ", { list: "SLDiscourseOutcome" }, ", ", { list: "SLSupportLevel" }, "."] },
+                { name: "Emotional Regulation and Self Awareness", parts: ["Patient will use ", { list: "SLEmoRegStrategy" }, " to ", { list: "SLEmoRegPurpose" }, " in ", { list: "SLCommunicationContext" }, ", ", { list: "SLSupportLevel" }, ", as measured by ", { list: "SLMeasurementMethod" }, "."] },
+                { name: "Specific Theraeutic Interventions", parts: ["Patient will participate in ", { list: "SLTherapeuticProtocol" }, " in order to target ", { list: "SLProtocolPurpose" }, " and improve functional communication."] }
+            ],
+            "Dysphagia": [
+                { name: "Instrumental Assessment Plan", parts: ["Patient will complete an instrumental swallowing assessment, ", { list: "SLSwallowAssessment" }, ", to objectively evaluate oropharyngeal swallow function, identify physiological deficits, trial therapeutic strategies, and guide recommendations for the least restrictive diet."] },
+                { name: "Clinical Monitoring", parts: ["SLP will monitor patient's swallow safety and efficiency during PO intake and will recommend further instrumental assessment as clinically indicated by ", { type: 'text', placeholder: 'e.g., new/worsening signs of aspiration' }, "."] },
+                { name: "PO trials", parts: ["Patient will tolerate ", { type: 'text', placeholder: 'e.g., 3 oz' }, " of ", { list: "SLDietTexture" }, " without overt signs/symptoms of aspiration (e.g., cough, throat clear, wet voice) ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Compensatory Strategy Use", parts: ["Patient and/or caregiver will demonstrate consistent and correct use of ", { list: "SLSwallowStrategy" }, " while consuming ", { list: "SLDietTexture" }, ", ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, " to reduce aspiration risk."] },
+                { name: "Therapeutic Exercise Program", parts: ["Patient will perform therapeutic exercises targeting ", { list: "SLExerciseTarget" }, " in order to ", { list: "SLExercisePurpose" }, ", completing ", { type: 'text', placeholder: 'e.g., 30 repetitions' }, " daily, ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Therapeutic Exercise Program add'l", parts: ["Patient will perform therapeutic exercises targeting ", { list: "SLExerciseTarget" }, " in order to ", { list: "SLExercisePurpose" }, ", completing ", { type: 'text', placeholder: 'e.g., 30 repetitions' }, " daily, ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "NMES - tolerance", parts: ["Patient will tolerate ", { type: 'text', placeholder: 'e.g., 30 minutes' }, " of NMES to ", { list: "SLNmesPlacement" }, " in order to ", { list: "SLNmesPurpose" }, "."] },
+                { name: "NMES - exercise", parts: ["Patient will perform ", { list: "SLSwallowExercise" }, " with concurrent NMES applied to the ", { list: "SLNmesPlacement" }, " to improve muscle recruitment and strength, completing ", { type: 'text', placeholder: 'e.g., 60 repetitions' }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Diet Tolerance", parts: ["Patient will tolerate the least restrictive diet, ", { list: "SLDietTexture" }, ", to maintain nutrition/hydration without clinical signs of aspiration or development of aspiration-related illness."] },
+                { name: "Patient/Caregiver Education", parts: ["Patient and/or caregiver will demonstrate understanding of ", { type: 'text', placeholder: 'e.g., swallow precautions' }, " by accurately verbalizing ", { type: 'text', placeholder: 'e.g., 3' }, " key recommendations provided."] },
+                { name: "Ouctome", parts: ["Patient will report improved swallow-related quality of life as reflected by ", { list: "SLOutcomeImprovement" }, " on the ", { list: "SLOutcomeMeasure" }, "."] }
+            ],
+            "Aphasia - Writing": [
+                { name: "Foundational Skills", parts: ["Patient will ", { list: "SLWritingActionFoundational" }, " ", { list: "SLWritingContentFoundational" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Functional and Generative Writing", parts: ["Patient will write/formulate ", { list: "SLWritingContentGenerative" }, " using ", { list: "SLWritingAid" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Specific Writing Interventions", parts: ["Patient will participate in ", { list: "SLWritingProtocol" }, " to improve the ability to write functional target words/phrases ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] }
+            ],
+            "Aphasia - Communicating": [
+                { name: "Sentence-level Formulation", parts: ["Patient will formulate/produce ", { list: "SLUtteranceType" }, " in a ", { list: "SLTaskContext" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Discourse & Functional Communication", parts: ["Patient will improve ", { list: "SLDiscourseTarget" }, " during a ", { list: "SLDiscourseTask" }, " on a personally-relevant topic ", { list: "SLSupportLevel" }, ", as measured by ", { type: 'text', placeholder: 'e.g., <2 breakdowns' }, "."] },
+                { name: "Motor Speech Intervention", parts: ["Patient will participate in ", { list: "SLMotorSpeechProtocol" }, " to improve correct production of ", { type: 'text', placeholder: 'e.g., 10 functional words' }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Metacognitive Strategy Knowledge", parts: ["Patient will demonstrate understanding of therapeutic strategies by independently teaching back ", { type: 'text', placeholder: 'e.g., 3' }, " ", { list: "SLStrategyType" }, "."] }
+            ],
+            "Aphasia - Reading": [
+                 { name: "Foundational Reading Comprehension", parts: ["Patient will read ", { list: "SLReadingStimulus" }, " and demonstrate comprehension by ", { list: "SLComprehensionResponse" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                 { name: "Functional & Discourse-Level Reading", parts: ["Patient will read ", { list: "SLReadingTextType" }, " and demonstrate comprehension by ", { list: "SLReadingCognitiveTask" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                 { name: "Metacognitive Strategy Knowledge", parts: ["Patient will demonstrate understanding of therapeutic strategies by independently teaching back ", { type: 'text', placeholder: 'e.g., 3' }, " reading comprehension strategies."] }
+            ],
+            "Aphasia - Listening and Comprehension": [
+                 { name: "Comprehension", parts: ["Patient will demonstrate auditory comprehension of ", { list: "SLQuestionType" }, " by ", { list: "SLResponseType" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                 { name: "Following Directions", parts: ["Patient will follow ", { list: "SLDirectionComplexity" }, " auditory directions ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] }
+            ],
+            "Motor Speech and Fluency": [
+                { name: "Traditional Articulation/Phonology", parts: ["Patient will produce ", { list: "SLTargetSound" }, " in ", { list: "SLSoundPosition" }, " of ", { list: "SLComplexityLevel" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Dysarthria Systems and Strategies", parts: ["Patient will improve/utilize ", { list: "SLSpeechSystemTarget" }, " to improve overall speech intelligibility in ", { list: "SLComplexityLevel" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Apraxia / Motor Planning", parts: ["Patient will produce words with ", { list: "SLSyllableShape" }, " during a structured articulatory-kinematic task ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Fluency", parts: ["Patient will manage fluency while participating in a ", { list: "SLFluencyTask" }, ", utilizing ", { list: "SLFluencyStrategy" }, " ", { list: "SLSupportLevel" }, ", as measured by ", { type: 'text', placeholder: 'e.g., <5% stuttered syllables' }, "."] },
+                { name: "Specific Therapeutic Interventions", parts: ["Patient will participate in ", { list: "SLMotorSpeechProtocol" }, " to improve correct production of ", { type: 'text', placeholder: 'e.g., 10 functional words/phrases' }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Outcome", parts: ["Patient will demonstrate improved functional communication skills, as evidenced by ", { list: "SLOutcomeImprovement" }, " on the ", { list: "SLOutcomeMeasure" }, "."] }
+            ],
+            "Voice, Resonance, Dyspnea, and VCD": [
+                { name: "Patient Education", parts: ["Patient will demonstrate understanding of ", { list: "SLVoiceEdTopic" }, " by successfully teaching it back ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Therapeutic Exercise and Practice", parts: ["Patient will correctly perform ", { list: "SLVoiceExerciseType" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, ", to reduce vocal strain and improve vocal efficiency."] },
+                { name: "Generalization of Techniques", parts: ["Patient will demonstrate use of ", { list: "SLVoiceTechnique" }, " during ", { list: "SLFunctionalContext" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Cough and Dyspnea (Breathing) Management", parts: ["Patient will utilize ", { list: "SLCoughDyspneaStrategy" }, " to manage episodes of cough/dyspnea in the presence of triggers ", { list: "SLSupportLevel" }, ", as measured by ", { type: 'text', placeholder: 'e.g., patient report of control' }, "."] },
+                { name: "Objective and Functional Outcomes", parts: ["Patient will demonstrate improved vocal function/quality as measured by ", { list: "SLVoiceOutcomeMeasure" }, ", achieving a target of ", { type: 'text', placeholder: 'e.g., a score of 10 or less' }, "."] }
+            ],
+            "Gender Affirming Voice Therapy": [
+                { name: "Patient Education", parts: ["Patient will demonstrate understanding of ", { list: "SLVoiceEdTopic" }, " by successfully teaching it back ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Therapeutic Exercise and Practice", parts: ["Patient will correctly perform ", { list: "SLVoiceExerciseType" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, ", to reduce vocal strain and improve vocal efficiency."] },
+                { name: "Generalization of Techniques", parts: ["Patient will demonstrate use of ", { list: "SLVoiceTechnique" }, " during ", { list: "SLFunctionalContext" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Objective and Functional Outcomes", parts: ["Patient will demonstrate improved vocal function/quality as measured by ", { list: "SLVoiceOutcomeMeasure" }, ", achieving a target of ", { type: 'text', placeholder: 'e.g., a score of 10 or less' }, "."] },
+                { name: "Acoustic Target (Pitch)", parts: ["Patient will produce speech ", { list: "SLComplexityPhrase" }, " with a target average pitch of ", { type: 'text', placeholder: 'e.g., 155-175 Hz' }, " ", { list: "SLSupportLevel" }, ", without signs of hyperfunction, ", { list: "SLAccuracy" }, "."] },
+                { name: "Voice-Gender Congruence", parts: ["Patient will use ", { list: "SLVoiceCharacteristic" }, " at the ", { list: "SLComplexityLevel" }, " that they self-rate as congruent with their gender on a/an ", { list: "SLRatingScale" }, "."] },
+                { name: "Voice Flexibility (Code-Switching)", parts: ["Patient will demonstrate the ability to shift between ", { type: 'text', placeholder: 'e.g., 2' }, " distinct voice profiles during ", { list: "SLFunctionalContext" }, " without signs of hyperfunction ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] }
+            ],
+            "AAC": [
+                { name: "AAC Assessment", parts: ["The patient will complete a comprehensive AAC assessment to determine the most effective and appropriate device for communicating his wants and needs during ADLs and emergent situations."] },
+                { name: "Voice Banking", parts: ["The patient will complete message and/or voice banking with min cues for device set-up."] },
+                { name: "AAC Utilization", parts: ["Pt will utilize high and/or low tech AAC device/supports to improve ability to effectively comprehend and communicate basic medical and social needs during routine daily activities in a functional living environment."] },
+                { name: "Outcome", parts: ["The patient will demonstrate improved score(s) on the following outcome(s): ", { type: 'text', placeholder: 'e.g., QUEST 2.0' }, ". We're looking for a score change of ", { type: 'text', placeholder: 'e.g., 10 points' }, " from ", { type: 'text', placeholder: 'baseline' }, " to ", { type: 'text', placeholder: 'target' }, " to improve function related to multimodal communication."] }
+            ],
+            "AAC Justification Goals - Linguistic": [
+                { name: "Narrative Organization", parts: ["Patient will organize information in a logical manner to tell or retell a story."] },
+                { name: "Asking Questions", parts: ["Patient will ask questions using Topic Messages, QuickFires, and the keyboard."] },
+                { name: "Novel Sentence Generation", parts: ["Will generate novel sentences to indicate medical status, needs, or emotional state."] },
+                { name: "Independent Patient", parts: ["Patient will demonstrate age-appropriate spelling skills without using word prediction keyboard feature."] },
+                { name: "Vocational Writing", parts: ["Patient will compose complex written stories for vocational purposes using keyboard with word/phrase prediction feature as needed."] }
+            ],
+            "AAC Justification Goals - Operational": [
+                { name: "Basic Device Operation", parts: ["Patient will turn device on/off in preparation for communication."] },
+                { name: "Assisted Programming", parts: ["Patient will participate in programming by beginning to select appropriate buttons for the editing process (e.g., edit more, label, image, etc.)."] },
+                { name: "Independent Device Management", parts: ["The patient will independently manage operational functions of the device (power on/off, manage voice output speaker, charging. etc.)."] },
+                { name: "Partner Instruction", parts: ["The patient will independently orient communication partners to appropriate use of their keyboard for effective two-way communication."] },
+                { name: "Using Software Features", parts: ["Will use software features such as word prediction, pronunciation exceptions, and editing."] },
+                { name: "Independent Device Care", parts: ["Will power up/down, charge, and clean device or ask others to do so independently."] },
+                { name: "Device Troubleshooting/Repair", parts: ["Patient will independently arrange troubleshoots and initiate repair procedures for her device as needed."] },
+                { name: "Independent Programming", parts: ["Patient will program her device independently utilizing the organization of the system."] }
+            ],
+            "AAC Justification Goals - Strategic": [
+                { name: "Sharing Personal Information", parts: ["Patient will share personally meaningful new or unusual information using a variety of communication tools in the device."] },
+                { name: "Partner-Focused Questions", parts: ["Patient will ask questions focused on the partner specific to the conversation."] },
+                { name: "Conversation Management", parts: ["The patient will start, maintain, extend, and end conversations appropriately."] },
+                { name: "Effective Conversation", parts: ["The patient will utilize device to hold simple/complex conversations with familiar and unfamiliar hearing partners."] },
+                { name: "Topic-Related Comments", parts: ["Will ask questions and comments related to the conversational topic."] },
+                { name: "Conversation Initiation", parts: ["Patient will start and end conversations using a variety of pre-programmed messages and those produced word-by-word or letter-by-letter."] },
+                { name: "Email", parts: ["Patient will compose appropriate messages to be sent via email to various communication partners for social engagement."] }
+            ],
+            "AAC Justification Goals - Other": [
+                { name: "Conversational Planning", parts: ["Patient will plan ahead to contribute effectively in a conversation (e.g., compose and store messages for the doctor before an appointment or for a phone conversation with a family member)."] },
+                { name: "Repair Strategies", parts: ["Patient will utilize several strategies to prevent or repair communication breakdowns."] },
+                { name: "Independent Repair", parts: ["The patient will independently analyze errors in communication interactions and use device to repair them."] },
+                { name: "Breakdown Prevention", parts: ["Will select from 1 or more messages to prevent communication breakdown."] },
+                { name: "Repairing", parts: ["After signaling a misunderstanding, will utilize 1 or more strategies to repair misunderstanding."] },
+                { name: "Error Analysis", parts: ["Patient will analyze errors in communication interactions and devise strategies to address them."] },
+                { name: "Medical Communication", parts: ["Patient will reduce medical risks by communicating (physical symptoms, medical information, pain descriptors, ask questions re: medical condition) with ", { list: 'SLAccuracy' }, " and ", { list: 'SLSupportLevel' }, "."] },
+                { name: "Safety Communication", parts: ["Patient will reduce safety risks by communication (info in a crisis, requests for help, personal needs, directives) with ", { list: 'SLAccuracy' }, " and ", { list: 'SLSupportLevel' }, "."] },
+                { name: "Social", parts: ["Patient will reduce social isolation risks by communicating (social introductions, common social messages, opinions, over the phone) with ", { list: 'SLAccuracy' }, " and ", { list: 'SLSupportLevel' }, "."] },
+                { name: "Communication Effectiveness", parts: ["Patient will increase communication effectiveness by (asking questions, answering questions, making clarifications, repairing communication breakdowns, reporting past events) with ", { list: 'SLAccuracy' }, " and ", { list: 'SLSupportLevel' }, "."] }
+            ],
+            "Parkinson's": [
+                { name: "Therapeutic Voice Exercise", parts: ["Patient will correctly perform ", { list: "SLVoiceExerciseType" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, ", to reduce vocal strain and improve vocal efficiency."] },
+                { name: "Loudness", parts: ["Patient will increase/maintain vocal loudness to a target of ", { type: 'text', placeholder: 'e.g., 75' }, " dB SPL during ", { list: "SLSpeakingTask" }, " ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] },
+                { name: "Standardized and Functional Outcomes", parts: ["Patient will demonstrate improved vocal function/quality as measured by ", { list: "SLVoiceOutcomeMeasure" }, ", achieving a target of ", { type: 'text', placeholder: 'e.g., a score of 10 or less' }, "."] },
+                { name: "Home Mangement Program", parts: ["Patient will demonstrate compliance and understanding of their home management program ", { list: "SLSupportLevel" }, ", ", { list: "SLAccuracy" }, "."] }
+            ]
+        };
+        
+        // --- APPLICATION LOGIC ---
+        const categorySelector = document.getElementById('category-selector');
+        const goalNameSelector = document.getElementById('goal-name-selector');
+        const interactiveSentence = document.getElementById('interactive-sentence');
+
+        function formatList(items) {
+            if (!items || items.length === 0) return '...';
+            if (items.length === 1) return items[0];
+            if (items.length === 2) return `${items[0]} and ${items[1]}`;
+            const last = items.pop();
+            return `${items.join(', ')}, and ${last}`;
+        }
+        
+        function promptForCustomText(placeholderSpan, originalText) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = (originalText === '***' || originalText.startsWith('e.g.,')) ? '' : originalText;
+            input.className = 'inline-input';
+            
+            const updateAndClose = () => {
+                placeholderSpan.textContent = input.value || '***';
+                placeholderSpan.style.display = 'inline';
+                if(input.parentNode) input.parentNode.removeChild(input);
+            };
+
+            input.addEventListener('blur', updateAndClose);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') input.blur();
+                else if (e.key === 'Escape') {
+                    placeholderSpan.textContent = originalText;
+                    input.blur();
+                }
+            });
+
+            placeholderSpan.style.display = 'none';
+            placeholderSpan.parentNode.insertBefore(input, placeholderSpan.nextSibling);
+            input.focus();
+        }
+
+        function renderGoalSentence() {
+            closeAllSelectors();
+            interactiveSentence.innerHTML = '';
+            const selectedCategory = categorySelector.value;
+            const selectedGoalName = goalNameSelector.value;
+            
+            if (!selectedCategory || !selectedGoalName) {
+                interactiveSentence.textContent = 'Please select a category and a goal name.';
+                return;
+            }
+
+            const goalInfo = finalGoalData[selectedCategory].find(g => g.name === selectedGoalName);
+
+            if (!goalInfo || !goalInfo.parts) {
+                interactiveSentence.textContent = 'Error: Goal template not found or is invalid.';
+                return;
+            };
+
+            goalInfo.parts.forEach((part, index) => {
+                if (typeof part === 'string') {
+                    interactiveSentence.appendChild(document.createTextNode(part));
+                } else {
+                    const span = document.createElement('span');
+                    const partType = part.type || 'select';
+                    span.id = `${part.list || 'text'}-${index}`;
+                    span.className = 'placeholder';
+                    span.dataset.type = partType;
+                    
+                    if (partType === 'select') {
+                        span.dataset.list = part.list;
+                        const listInfo = smartLists[part.list];
+                        const defaultText = part.default || (listInfo && listInfo.options ? listInfo.options[0] : '...');
+                        span.textContent = defaultText;
+                        span.addEventListener('click', openSelector);
+                    } else { // text
+                        span.dataset.placeholder = part.placeholder || '***';
+                        span.textContent = part.default || part.placeholder;
+                        span.addEventListener('click', (e) => promptForCustomText(e.target, e.target.textContent));
+                    }
+                    interactiveSentence.appendChild(span);
+                }
+            });
+        }
+
+        function openSelector(event) {
+            event.stopPropagation();
+            closeAllSelectors();
+            const placeholderSpan = event.target;
+            const listName = placeholderSpan.dataset.list;
+
+            const listInfo = smartLists[listName];
+            if (!listInfo) return;
+            const isMulti = listInfo.multi;
+            const options = listInfo.options;
+
+            const selectorDiv = document.createElement('div');
+            selectorDiv.className = 'custom-selector';
+            selectorDiv.addEventListener('click', (e) => e.stopPropagation());
+
+            const currentValues = placeholderSpan.textContent.split(/, | and /);
+
+            options.forEach(optionText => {
+                const itemDiv = document.createElement('div');
+                const isWildcard = optionText === '***';
+                const inputType = isMulti && !isWildcard ? 'checkbox' : 'radio';
+                const input = document.createElement('input');
+                input.type = inputType;
+                input.name = `selector-${placeholderSpan.id}`;
+                input.value = optionText;
+                if (currentValues.includes(optionText)) input.checked = true;
+                
+                if(isMulti) {
+                    input.addEventListener('change', () => {
+                        const wildcardRadio = selectorDiv.querySelector('input[value="***"]');
+                        if (isWildcard && input.checked) {
+                            selectorDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                        } else if (input.checked && wildcardRadio) {
+                            wildcardRadio.checked = false;
+                        }
+                    });
+                }
+
+                const label = document.createElement('label');
+                label.textContent = optionText;
+                label.prepend(input);
+                itemDiv.appendChild(label);
+                selectorDiv.appendChild(itemDiv);
+            });
+
+            document.body.appendChild(selectorDiv);
+            const rect = placeholderSpan.getBoundingClientRect();
+            selectorDiv.style.left = `${window.scrollX + rect.left}px`;
+            selectorDiv.style.top = `${window.scrollY + rect.bottom + 5}px`;
+
+            selectorDiv.addEventListener('change', (e) => {
+                if(e.target.value === '***' && e.target.checked) {
+                    closeAllSelectors();
+                    promptForCustomText(placeholderSpan, '***');
+                    return;
+                }
+
+                const selectedItems = [];
+                selectorDiv.querySelectorAll('input:checked').forEach(input => selectedItems.push(input.value));
+                placeholderSpan.textContent = isMulti ? formatList(selectedItems) : (selectedItems[0] || '...');
+                if (!isMulti) closeAllSelectors();
+            });
+        }
+
+        function closeAllSelectors() {
+            document.querySelectorAll('.custom-selector').forEach(div => div.remove());
+        }
+        
+        function updateGoalNameSelector() {
+            const selectedCategory = categorySelector.value;
+            goalNameSelector.innerHTML = '';
+            
+            if (finalGoalData[selectedCategory]) {
+                finalGoalData[selectedCategory].forEach(goal => {
+                    const option = document.createElement('option');
+                    option.value = goal.name;
+                    option.textContent = goal.name;
+                    goalNameSelector.appendChild(option);
+                });
+            }
+            renderGoalSentence();
+        }
+
+        // Initialize
+        Object.keys(finalGoalData).forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            categorySelector.appendChild(option);
+        });
+
+        categorySelector.addEventListener('change', updateGoalNameSelector);
+        goalNameSelector.addEventListener('change', renderGoalSentence);
+        document.addEventListener('click', closeAllSelectors);
+        
+        // Initial Load
+        updateGoalNameSelector();
+
+    </script>
+</body>
+</html>
