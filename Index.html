@@ -104,6 +104,42 @@
             border-radius: 3px;
             font-family: "Courier New", Courier, monospace;
         }
+        /* --- NEW STYLES for Component List --- */
+        .smartlist-info-box {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+        }
+        .smartlist-info-box h3 {
+            margin-top: 0;
+            font-size: 1.1em;
+            color: #495057;
+        }
+        #used-smartlists-list {
+            list-style-type: none;
+            padding-left: 0;
+            margin-bottom: 0;
+            columns: 2;
+            -webkit-columns: 2;
+            -moz-columns: 2;
+        }
+        #used-smartlists-list li {
+            font-family: monospace;
+            padding: 4px 0;
+            font-size: 0.95em;
+        }
+        .placeholder.highlight {
+            background-color: #ffc107; /* A yellow highlight color */
+            color: #000;
+        }
+        #used-smartlists-list li:hover,
+        #used-smartlists-list li:highlight {
+            color: #ffc107;
+            cursor: pointer;
+        }
+
     </style>
 </head>
 <body>
@@ -128,6 +164,13 @@
             <h3>Interactive Goal Sentence</h3>
             <p id="interactive-sentence">Select a category to begin...</p>
         </div>
+
+        <div class="smartlist-info-box">
+            <h3>SmartLists Used in this Goal: (hover to highlight)</h3>
+            <ul id="used-smartlists-list">
+                <li>Select a goal to see its components.</li>
+            </ul>
+        </div>
     </div>
 
     <script>
@@ -135,7 +178,7 @@
         const smartLists = {
             SLCogStrategy: { multi: true, options: ['Goal-Plan-Do-Review (GPDR)', 'Pomodoro Technique', 'Prioritization Matrix (e.g., Eisenhower, Must/Should/Could)', 'A visual planning system', 'An external memory aid', 'Proactive rest breaks', 'Use of a planner / calendar', 'Mindfulness/grounding techniques', 'Setting phone alarms / reminders', 'Taking notes / Using a notebook', 'Using a pill organizer', 'Environmental placement (e.g., keys by the door)', 'Backwards chaining', 'Task chunking', '***'] },
             SLComplexityCog: { multi: false, options: ['simple', 'moderately complex', 'complex'] },
-            SLProblemContext: { multi: true, options: ['home safety', 'home management', 'work/vocational demands', 'community integration', 'social situation', 'completing a functional problem-solving task'] },
+            SLProblemContext: { multi: true, options: ['home safety', 'home management', 'work/vocational demands', 'community integration', 'social situations', 'completing a functional problem-solving task'] },
             SLPacingStrategy: { multi: true, options: ['planning and pacing strategies', 'scheduled rest breaks', 'energy conservation techniques', 'task delegation'] },
             SLBrainHealthHabit: { multi: true, options: ['optimized nutrition/hydration habit', 'physical exercise routine', 'restorative sleep practice', 'mindfulness/calming technique', 'social connection activity'] },
             SLSupportLevel: { multi: true, options: ['independently', 'with modified independence', 'with minimal cues', 'with moderate cues', 'with maximal cues', 'with minimal to moderate cues', 'with moderate to maximal cues', 'with visual cues', '***'] },
@@ -434,6 +477,21 @@
                         const defaultText = part.default || (listInfo && listInfo.options ? listInfo.options[0] : '...');
                         span.textContent = defaultText;
                         span.addEventListener('click', openSelector);
+
+                        span.addEventListener('mouseover', () => {
+                            const listName = span.dataset.list;
+                            if (listName) {
+                                const listItem = document.querySelector(`#used-smartlists-list li[data-list-name="${listName}"]`);
+                                if (listItem) listItem.classList.add('highlight');
+                            }
+                        });
+                        span.addEventListener('mouseout', () => {
+                            const listName = span.dataset.list;
+                            if (listName) {
+                                const listItem = document.querySelector(`#used-smartlists-list li[data-list-name="${listName}"]`);
+                                if (listItem) listItem.classList.remove('highlight');
+                            }
+                        });
                     } else { // text
                         span.dataset.placeholder = part.placeholder || '***';
                         span.textContent = part.default || part.placeholder;
@@ -442,6 +500,8 @@
                     interactiveSentence.appendChild(span);
                 }
             });
+
+            displayUsedSmartLists(goalInfo);
         }
 
         function openSelector(event) {
@@ -510,6 +570,51 @@
 
         function closeAllSelectors() {
             document.querySelectorAll('.custom-selector').forEach(div => div.remove());
+        }
+
+        // --- NEW FUNCTION to display used SmartLists ---
+        function displayUsedSmartLists(goalInfo) {
+            const listContainer = document.getElementById('used-smartlists-list');
+            listContainer.innerHTML = ''; // Clear the list
+
+            if (!goalInfo || !goalInfo.parts) {
+                listContainer.innerHTML = '<li>Select a goal to see its components.</li>';
+                return;
+            }
+
+            const usedLists = new Set();
+            goalInfo.parts.forEach(part => {
+                if (typeof part === 'object' && part.list) {
+                    usedLists.add(part.list);
+                }
+            });
+
+            if (usedLists.size === 0) {
+                listContainer.innerHTML = '<li>This goal has no SmartList components.</li>';
+                return;
+            }
+
+            usedLists.forEach(listName => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `.${listName}`;
+                listItem.dataset.listName = listName;
+                
+                // --- NEW HOVER LOGIC ---
+                listItem.addEventListener('mouseover', () => {
+                    document.querySelectorAll(`.placeholder[data-list="${listName}"]`).forEach(span => {
+                        span.classList.add('highlight');
+                    });
+                });
+                
+                listItem.addEventListener('mouseout', () => {
+                    document.querySelectorAll(`.placeholder.highlight[data-list="${listName}"]`).forEach(span => {
+                        span.classList.remove('highlight');
+                    });
+                });
+                // --- END NEW LOGIC ---
+
+                listContainer.appendChild(listItem);
+            });
         }
         
         function updateGoalNameSelector() {
